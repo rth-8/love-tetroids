@@ -11,7 +11,9 @@ function love.load()
     shipImg = love.graphics.newImage("gfx/ship.png")
     tileImg = love.graphics.newImage("gfx/tile.png")
     shieldImg = love.graphics.newImage("gfx/shield.png");
-    frameImg = love.graphics.newImage("gfx/simple_frame.png");
+    canisterImg = love.graphics.newImage("gfx/canister.png");
+    frameSingleImg = love.graphics.newImage("gfx/frame_single.png");
+    frameSegmentedImg = love.graphics.newImage("gfx/frame_segmented.png");
     frameFillImg = love.graphics.newImage("gfx/frame_fill.png");
     
     shipImgW2 = shipImg:getWidth() / 2
@@ -22,8 +24,8 @@ function love.load()
     TILE_H = 24
     TILE_H2 = TILE_H/2
     
-    MAX_BAR_W = frameImg:getWidth()
-    MAX_BAR_H = frameImg:getHeight()
+    MAX_BAR_W = frameSingleImg:getWidth()
+    MAX_BAR_H = frameSingleImg:getHeight()
     
     -- Asteroids
     
@@ -309,6 +311,7 @@ function processInputAsteroids(dt)
     if love.keyboard.isDown("up") then
         ship.vx = ship.vx + ACCEL * dt * math.cos(ship.angle)
         ship.vy = ship.vy + ACCEL * dt * math.sin(ship.angle)
+        ship.fuel = ship.fuel - 0.02
     end
     if love.keyboard.isDown("space") then
         if ship.shootingFrame % 10 == 0 then
@@ -697,17 +700,29 @@ function drawTetromino()
     end
 end
 
-function drawBar(posx, posy, currentv, maxv, fc, ic)
+function drawBar(posx, posy, currentv, maxv, fc, ic, isSegmented)
+    love.graphics.setColor(0.3, 0.3, 0.3)
+    love.graphics.draw(frameFillImg, posx, posy+2, 0, MAX_BAR_W, 0.8)
     love.graphics.setColor(ic[1], ic[2], ic[3])
     love.graphics.draw(frameFillImg, posx, posy+2, 0, (currentv/maxv)*MAX_BAR_W, 0.8)
     love.graphics.setColor(fc[1], fc[2], fc[3])
-    love.graphics.draw(frameImg, posx, posy)
+    if isSegmented == true then
+        love.graphics.draw(frameSegmentedImg, posx, posy)
+    else
+        love.graphics.draw(frameSingleImg, posx, posy)
+    end
 end
 
 function drawHull(posx, posy)
     love.graphics.setColor(0, 1, 0)
     love.graphics.draw(shieldImg, posx, posy)
-    drawBar(posx + shieldImg:getWidth() + 10, posy, ship.hull, 100, {0.5,0.5,0.5}, {1,1,0})
+    drawBar(posx + shieldImg:getWidth() + 10, posy, ship.hull, 100, {0.4,0.4,0.4}, {0,1,0}, true)
+end
+
+function drawFuel(posx, posy)
+    love.graphics.setColor(0, 1, 1)
+    love.graphics.draw(canisterImg, posx, posy)
+    drawBar(posx + canisterImg:getWidth() + 10, posy, ship.fuel, 100, {0.4,0.4,0.4}, {0,1,1}, false)
 end
 
 function love.draw()
@@ -718,6 +733,7 @@ function love.draw()
         drawShots()
         drawTetroids()
         drawHull(10, 10)
+        drawFuel(10, 50)
     elseif current_scene == SCENE_TETRIS then
         drawBoard()
         if delayBeforeNextScene == 0 then
