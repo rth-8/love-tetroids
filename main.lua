@@ -4,12 +4,15 @@ require "tetroids"
 local ONE_RAD = math.pi / 180
 
 function love.load()
-    -- love.graphics.setDefaultFilter("nearest", "nearest")
+    love.graphics.setDefaultFilter("nearest", "nearest")
 
     math.randomseed(os.time())
     
     shipImg = love.graphics.newImage("gfx/ship.png")
     tileImg = love.graphics.newImage("gfx/tile.png")
+    shieldImg = love.graphics.newImage("gfx/shield.png");
+    frameImg = love.graphics.newImage("gfx/simple_frame.png");
+    frameFillImg = love.graphics.newImage("gfx/frame_fill.png");
     
     shipImgW2 = shipImg:getWidth() / 2
     shipImgH2 = shipImg:getHeight() / 2
@@ -19,6 +22,9 @@ function love.load()
     TILE_H = 24
     TILE_H2 = TILE_H/2
     
+    MAX_BAR_W = frameImg:getWidth()
+    MAX_BAR_H = frameImg:getHeight()
+    
     -- Asteroids
     
     ship = {}
@@ -26,6 +32,9 @@ function love.load()
     SPEED = 300
     ACCEL = 5
     FRICTION = 0.7
+    
+    MIN_WEIGHT = 58
+    MAX_WEIGHT = 288
     
     shots = {}
     
@@ -101,6 +110,9 @@ function reset()
     ship.shootingFrame = 10
     ship.radius = shipImgW2
     ship.iframes = 0
+    ship.hull = 100
+    ship.fuel = 100
+    ship.weight = MIN_WEIGHT
     
     createTetroidBelt()
     
@@ -323,6 +335,7 @@ function respawnShip()
     ship.shootingFrame = 10
     ship.radius = shipImgW2
     ship.iframes = 120
+    ship.hull = ship.hull - 10
 end
 
 function checkShotCollisionWithTetroid(x, y, t)
@@ -684,6 +697,19 @@ function drawTetromino()
     end
 end
 
+function drawBar(posx, posy, currentv, maxv, fc, ic)
+    love.graphics.setColor(ic[1], ic[2], ic[3])
+    love.graphics.draw(frameFillImg, posx, posy+2, 0, (currentv/maxv)*MAX_BAR_W, 0.8)
+    love.graphics.setColor(fc[1], fc[2], fc[3])
+    love.graphics.draw(frameImg, posx, posy)
+end
+
+function drawHull(posx, posy)
+    love.graphics.setColor(0, 1, 0)
+    love.graphics.draw(shieldImg, posx, posy)
+    drawBar(posx + shieldImg:getWidth() + 10, posy, ship.hull, 100, {0.5,0.5,0.5}, {1,1,0})
+end
+
 function love.draw()
     if current_scene == SCENE_ASTEROIDS then
         love.graphics.setColor(1,1,1);
@@ -691,6 +717,7 @@ function love.draw()
         drawShip()
         drawShots()
         drawTetroids()
+        drawHull(10, 10)
     elseif current_scene == SCENE_TETRIS then
         drawBoard()
         if delayBeforeNextScene == 0 then
@@ -701,6 +728,7 @@ function love.draw()
         love.graphics.rectangle("fill", 1*TILE_W, 0, BOARD_W*TILE_W, 2*TILE_H)
     elseif current_scene == SCENE_BASE then
         drawBoard()
+        drawHull(14*TILE_W, 2*TILE_H)
     end
 end
 
