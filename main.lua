@@ -329,6 +329,28 @@ function processInputAsteroids(dt)
     end
 end
 
+function processInputTetris(dt)
+    if currentFrame % 4 == 0 then
+        if love.keyboard.isDown("left") then
+            if checkTetromino(currentTetromino.r, currentTetromino.c-1, currentTetromino.shape) == true then
+                currentTetromino.c = currentTetromino.c - 1
+            end
+        end
+
+        if love.keyboard.isDown("right") then
+            if checkTetromino(currentTetromino.r, currentTetromino.c+1, currentTetromino.shape) == true then
+                currentTetromino.c = currentTetromino.c + 1
+            end
+        end
+
+        if love.keyboard.isDown("down") then
+            if checkTetromino(currentTetromino.r+1, currentTetromino.c, currentTetromino.shape) == true then
+                currentTetromino.r = currentTetromino.r + 1
+            end
+        end
+    end
+end
+
 function respawnShip()
     ship.x = love.graphics.getWidth() / 2
     ship.y = love.graphics.getHeight() / 2
@@ -563,6 +585,7 @@ function love.update(dt)
         cleanShots()
         cleanTetroids()
     elseif current_scene == SCENE_TETRIS then
+        processInputTetris(dt)
         if currentFrame % TETRIS_SPEED == 0 then
             if checkTetromino(currentTetromino.r+1, currentTetromino.c, currentTetromino.shape) == true then
                 currentTetromino.r = currentTetromino.r + 1
@@ -748,34 +771,6 @@ function love.draw()
     end
 end
 
-function processInputTetris(key)
-    -- rotate
-    if key == "space" then
-        local nextShape = (currentTetromino.shape + 1) % #(tetrominos[currentTetromino.id].shapes)
-        if checkTetromino(currentTetromino.r, currentTetromino.c, nextShape) == true then
-            currentTetromino.shape = nextShape
-        end
-    end
-    
-    if key == "left" then
-        if checkTetromino(currentTetromino.r, currentTetromino.c-1, currentTetromino.shape) == true then
-            currentTetromino.c = currentTetromino.c - 1
-        end
-    end
-    
-    if key == "right" then
-        if checkTetromino(currentTetromino.r, currentTetromino.c+1, currentTetromino.shape) == true then
-            currentTetromino.c = currentTetromino.c + 1
-        end
-    end
-    
-    if key == "down" then
-        if checkTetromino(currentTetromino.r+1, currentTetromino.c, currentTetromino.shape) == true then
-            currentTetromino.r = currentTetromino.r + 1
-        end
-    end
-end
-
 function love.keypressed(key, scancode, isrepeat)
     if key == "r" then
         reset()
@@ -786,7 +781,13 @@ function love.keypressed(key, scancode, isrepeat)
     end
     
     if current_scene == SCENE_TETRIS then
-        processInputTetris(key)
+        -- rotate
+        if key == "space" then
+            local nextShape = (currentTetromino.shape + 1) % #(tetrominos[currentTetromino.id].shapes)
+            if checkTetromino(currentTetromino.r, currentTetromino.c, nextShape) == true then
+                currentTetromino.shape = nextShape
+            end
+        end
     end
     
     if current_scene == SCENE_BASE then
