@@ -15,6 +15,16 @@ function love.load()
     frameSingleImg = love.graphics.newImage("gfx/frame_single.png");
     frameSegmentedImg = love.graphics.newImage("gfx/frame_segmented.png");
     frameFillImg = love.graphics.newImage("gfx/frame_fill.png");
+    thrusterImg = love.graphics.newImage("gfx/thruster.png");
+    
+    thrusterFrames = {
+        love.graphics.newQuad(0*16, 0, 16, 16, 6*16, 16),
+        love.graphics.newQuad(1*16, 0, 16, 16, 6*16, 16),
+        love.graphics.newQuad(2*16, 0, 16, 16, 6*16, 16),
+        love.graphics.newQuad(3*16, 0, 16, 16, 6*16, 16),
+        love.graphics.newQuad(4*16, 0, 16, 16, 6*16, 16),
+        love.graphics.newQuad(5*16, 0, 16, 16, 6*16, 16),
+    }
     
     shipImgW2 = shipImg:getWidth() / 2
     shipImgH2 = shipImg:getHeight() / 2
@@ -109,6 +119,7 @@ function reset()
     ship.angle = -math.pi / 2
     ship.vx = 0
     ship.vy = 0
+    ship.thrust = false
     ship.shootingFrame = 10
     ship.radius = shipImgW2
     ship.iframes = 0
@@ -305,14 +316,20 @@ function processInputAsteroids(dt)
     if love.keyboard.isDown("left") then
         ship.angle = ship.angle - ONE_RAD * SPEED * dt
     end
+    
     if love.keyboard.isDown("right") then
         ship.angle = ship.angle + ONE_RAD * SPEED * dt
     end
+    
     if love.keyboard.isDown("up") then
         ship.vx = ship.vx + ACCEL * dt * math.cos(ship.angle)
         ship.vy = ship.vy + ACCEL * dt * math.sin(ship.angle)
         ship.fuel = ship.fuel - 0.02
+        ship.thrust = true
+    else
+        ship.thrust = false
     end
+    
     if love.keyboard.isDown("space") then
         if ship.shootingFrame % 10 == 0 then
             table.insert(shots, {
@@ -648,7 +665,19 @@ function drawShip()
         love.graphics.setColor(0, 1, 0)
     end
     
-    love.graphics.draw(shipImg, ship.x, ship.y, ship.angle, 1, 1, shipImgW2, shipImgH2)
+    love.graphics.push()
+    
+    love.graphics.translate(ship.x, ship.y)
+    love.graphics.rotate(ship.angle)
+    
+    love.graphics.draw(shipImg, -shipImgW2, -shipImgH2)
+    
+    if ship.thrust then
+        love.graphics.setColor(1, 1, 0)
+        love.graphics.draw(thrusterImg, thrusterFrames[(currentFrame % #thrusterFrames)+1], -shipImg:getWidth(), -8)
+    end
+
+    love.graphics.pop()
     
     if drawDebugInfo then
         love.graphics.setColor(1, 0, 0)
