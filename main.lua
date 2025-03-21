@@ -114,14 +114,14 @@ function reset()
     current_scene = SCENE_ASTEROIDS
     next_scene = 0
     
+    ship.radius = shipImgW2
     ship.x = love.graphics.getWidth() / 2
-    ship.y = love.graphics.getHeight() / 2
+    ship.y = base.y - base.radius - ship.radius - 4
     ship.angle = -math.pi / 2
     ship.vx = 0
     ship.vy = 0
     ship.thrust = false
     ship.shootingFrame = 10
-    ship.radius = shipImgW2
     ship.iframes = 0
     ship.hull = 100
     ship.fuel = 100
@@ -161,9 +161,10 @@ function resetBoard()
     board[24] = {2,2,2,2,2,2,2,2,2,2,2,2}
 end
 
-function changeScene(s)
-    delayBeforeNextScene = 30
-    delayAfterNextScene = 30
+function changeScene(s, b, a)
+    -- must be > 0 !
+    delayBeforeNextScene = b
+    delayAfterNextScene = a
     next_scene = s
 end
 
@@ -299,7 +300,7 @@ function moveShip(dt)
         ship.iframes = ship.iframes - 1
     end
     
-    if checkDistance(ship.x, ship.y, base.x, base.y, base.radius) == true then
+    if checkDistance(ship.x, ship.y, base.x, base.y, base.radius - 4) == true then
         checkFullLines(linesToClear)
         print("Lines to clear: "..tostring(#linesToClear))
         if #linesToClear > 0 then
@@ -308,7 +309,7 @@ function moveShip(dt)
             removingAngle = 0
             removingScale = 1
         end
-        changeScene(SCENE_BASE)
+        changeScene(SCENE_BASE, 10, 10)
     end
 end
 
@@ -456,7 +457,7 @@ function processTetroids(dt)
                         currentTetromino.shape = 0
                         currentTetromino.r = tetrominos[currentTetromino.id].startR
                         currentTetromino.c = tetrominos[currentTetromino.id].startC
-                        changeScene(SCENE_TETRIS)
+                        changeScene(SCENE_TETRIS, 1, 30)
                     else
                         respawnShip()
                     end
@@ -611,7 +612,7 @@ function love.update(dt)
                 ship.iframes = 120
                 ship.vx = 0
                 ship.vy = 0
-                changeScene(SCENE_ASTEROIDS)
+                changeScene(SCENE_ASTEROIDS, 30, 10)
             end
         end
     elseif current_scene == SCENE_BASE then
@@ -828,7 +829,7 @@ function love.keypressed(key, scancode, isrepeat)
                 ship.y = base.y - base.radius - ship.radius - 4
                 ship.vx = 0
                 ship.vy = 0
-                changeScene(SCENE_ASTEROIDS)
+                changeScene(SCENE_ASTEROIDS, 1, 30)
             end
         end
     end
