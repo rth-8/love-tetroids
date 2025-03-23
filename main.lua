@@ -237,7 +237,8 @@ function createTetroid(x, y, id, shp)
     
     t.alive = true 
     
-    -- print("Add tetroid: ("..tostring(t.x)..","..tostring(t.y)..") ~ ("..tostring(t.vx)..","..tostring(t.vy)..") ~ "..tostring(t.a))
+    print("Add tetroid: "..tostring(id))
+    -- print(": "..tostring(t.x)..","..tostring(t.y)..") ~ ("..tostring(t.vx)..","..tostring(t.vy)..") ~ "..tostring(t.a))
     
     return t
 end
@@ -798,6 +799,27 @@ function love.draw()
     elseif current_scene == SCENE_BASE then
         drawBoard()
         drawHull(14*TILE_W, 2*TILE_H)
+    elseif current_scene == 999 then
+        -- debug: draw all large tetroids
+        x = TILE_W
+        y = TILE_H
+        for i=LARGE_MIN,LARGE_MAX,1 do
+            g = tetroidTypes[i].shapes[1]
+            for r=1,5,1 do
+                for c=1,5,1 do
+                    local tid = g[r][c]
+                    if tid > 0 then
+                        love.graphics.setColor(tetrominos[tid].color.r, tetrominos[tid].color.g, tetrominos[tid].color.b);
+                        love.graphics.draw(tileImg, x + (c-1)*TILE_W, y + (r-1)*TILE_H);
+                    end
+                end
+            end
+            x = x + TILE_W*6
+            if x > love.graphics.getWidth() then
+                x = TILE_W
+                y = y + TILE_H*6
+            end
+        end
     end
 end
 
