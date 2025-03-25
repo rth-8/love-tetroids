@@ -85,7 +85,11 @@ function love.load()
     removingAngle = 0
     removingScale = 1 
     
+    movingTexts = {}
+    
     -- General
+    
+    score = 0
     
     SCENE_ASTEROIDS = 1
     SCENE_TETRIS = 2
@@ -98,6 +102,9 @@ function love.load()
     
     drawDebugInfo = false
     paused = false
+    
+    -- testcase1()
+    testcase2()
 end
 
 function reset()
@@ -131,6 +138,8 @@ function reset()
     
     resetBoard()
     
+    score = 0
+    
     currentFrame = 1
 end
 
@@ -158,6 +167,19 @@ function resetBoard()
     board[21] = {2,0,0,0,0,0,0,0,0,0,0,2}
     board[22] = {2,0,0,0,0,0,0,0,0,0,0,2}
     board[23] = {2,0,0,0,0,0,0,0,0,0,0,2}
+    board[24] = {2,2,2,2,2,2,2,2,2,2,2,2}
+end
+
+function testcase1()
+    board[23] = {2,1,1,1,1,1,1,1,1,1,1,2}
+    board[24] = {2,2,2,2,2,2,2,2,2,2,2,2}
+end
+
+function testcase2()
+    board[20] = {2,1,1,1,1,1,1,1,1,1,1,2}
+    board[21] = {2,1,1,1,0,1,1,0,1,1,1,2}
+    board[22] = {2,1,1,1,1,1,1,1,1,1,1,2}
+    board[23] = {2,1,1,1,1,1,1,1,1,1,1,2}
     board[24] = {2,2,2,2,2,2,2,2,2,2,2,2}
 end
 
@@ -420,6 +442,16 @@ function processShots(dt)
             if checkDistance(shot.x, shot.y, t.x, t.y, TETROID_COLLISION_RADIUS) == true then
                 -- second: fine collision
                 if checkShotCollisionWithTetroid(shot.x, shot.y, t) == true then
+                    if t.shape == 1 then 
+                        score = score + 50
+                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ 50", timer = 50 })
+                    elseif t.shape == 2 or t.shape == 3 then 
+                        score = score + 30
+                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ 30", timer = 50 })
+                    else 
+                        score = score + 10
+                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ 10", timer = 50 })
+                    end
                     t.alive = false
                     shot.alive = false
                     break
@@ -540,6 +572,10 @@ end
 
 function clearLine(idx, val)
     print("Clear line: "..tostring(idx))
+    if val == 0 then
+        score = score + 100
+        table.insert(movingTexts, { x = BOARD_W*TILE_W+TILE_W2, y = (idx-1)*TILE_H, txt = " + 100", timer = 50 })
+    end
     for c=2,11,1 do
         board[idx][c] = val
     end
@@ -575,6 +611,16 @@ function clearLinesToClear()
     end 
 end 
 
+function processMovingTexts()
+    for i, t in ipairs(movingTexts) do
+        t.y = t.y - 1
+        t.timer = t.timer - 1
+        if t.timer == 0 then
+            table.remove(movingTexts, i)
+        end
+    end
+end
+
 function love.update(dt)
     if paused then return end
     
@@ -603,6 +649,7 @@ function love.update(dt)
         processTetroids(dt)
         cleanShots()
         cleanTetroids()
+        processMovingTexts()
     elseif current_scene == SCENE_TETRIS then
         processInputTetris(dt)
         if currentFrame % TETRIS_SPEED == 0 then
@@ -627,6 +674,7 @@ function love.update(dt)
                 clearLinesToClear()
             end
         end
+        processMovingTexts()
     end
     
     currentFrame = currentFrame + 1
@@ -779,15 +827,25 @@ function drawFuel(posx, posy)
     drawBar(posx + canisterImg:getWidth() + 10, posy, ship.fuel, 100, {0.4,0.4,0.4}, {0,1,1}, false)
 end
 
+function drawMovingTexts()
+    love.graphics.setColor(1, 1, 1)
+    for _, t in ipairs(movingTexts) do
+        love.graphics.print(t.txt, t.x, t.y)
+    end
+end
+
 function love.draw()
     if current_scene == SCENE_ASTEROIDS then
-        love.graphics.setColor(1,1,1);
+        love.graphics.setColor(1,1,1)
         love.graphics.circle("fill", base.x, base.y, base.radius)
         drawShip()
         drawShots()
         drawTetroids()
         drawHull(10, 10)
         drawFuel(10, 50)
+        drawMovingTexts()
+        love.graphics.setColor(1,1,1)
+        love.graphics.print(score, 400, 10)
     elseif current_scene == SCENE_TETRIS then
         drawBoard()
         if delayBeforeNextScene == 0 then
@@ -799,6 +857,7 @@ function love.draw()
     elseif current_scene == SCENE_BASE then
         drawBoard()
         drawHull(14*TILE_W, 2*TILE_H)
+        drawMovingTexts()
     elseif current_scene == 999 then
         -- debug: draw all large tetroids
         x = TILE_W
