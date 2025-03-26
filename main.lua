@@ -59,6 +59,7 @@ function love.load()
     -- Tetris
     
     BOARD_W = 12
+    BOARD_X = love.graphics.getWidth() / 2 - (BOARD_W*TILE_W) / 2 - TILE_W
     BOARD_H = 24
     
     board = {}
@@ -70,7 +71,7 @@ function love.load()
         c = 0,
     } 
     
-    TETRIS_SPEED = 50 
+    TETRIS_SPEED = 50
     
     -- Base
     
@@ -84,6 +85,8 @@ function love.load()
     removingLines = 0
     removingAngle = 0
     removingScale = 1 
+    
+    REMOVING_LINES_COUNTER_MAX = 30
     
     movingTexts = {}
     
@@ -102,9 +105,6 @@ function love.load()
     
     drawDebugInfo = false
     paused = false
-    
-    -- testcase1()
-    testcase2()
 end
 
 function reset()
@@ -141,6 +141,9 @@ function reset()
     score = 0
     
     currentFrame = 1
+    
+    -- testcase1()
+    testcase2()
 end
 
 function resetBoard()
@@ -328,7 +331,7 @@ function moveShip(dt)
         print("Lines to clear: "..tostring(#linesToClear))
         if #linesToClear > 0 then
             clearLines(linesToClear, 3)
-            removingLines = 30
+            removingLines = REMOVING_LINES_COUNTER_MAX
             removingAngle = 0
             removingScale = 1
         end
@@ -572,10 +575,6 @@ end
 
 function clearLine(idx, val)
     print("Clear line: "..tostring(idx))
-    if val == 0 then
-        score = score + 100
-        table.insert(movingTexts, { x = BOARD_W*TILE_W+TILE_W2, y = (idx-1)*TILE_H, txt = " + 100", timer = 50 })
-    end
     for c=2,11,1 do
         board[idx][c] = val
     end
@@ -665,6 +664,12 @@ function love.update(dt)
         end
     elseif current_scene == SCENE_BASE then
         if removingLines > 0 then
+            if removingLines == REMOVING_LINES_COUNTER_MAX-1 then
+                for _, line in ipairs(linesToClear) do
+                    score = score + 100
+                    table.insert(movingTexts, { x = BOARD_W*TILE_W+TILE_W2, y = (line-1)*TILE_H, txt = " + 100", timer = 50 })
+                end
+            end
             removingLines = removingLines - 1
             removingAngle = removingAngle + (2*math.pi/30)
             removingScale = removingScale - (1/30)
@@ -765,31 +770,31 @@ function drawTetroids()
     end
 end
 
-function drawBoard()
+function drawBoard(posx, posy)
     for r = 3,BOARD_H,1 do
         for c = 1,BOARD_W,1 do
             if board[r][c] == 1 then
                 love.graphics.setColor(1,1,1);
-                love.graphics.draw(tileImg, c*TILE_W, r*TILE_H - TILE_H)
+                love.graphics.draw(tileImg, posx + (c*TILE_W), posy + (r*TILE_H) - TILE_H)
             elseif board[r][c] == 2 then
                 love.graphics.setColor(0.5,0.5,0.5);
-                love.graphics.draw(tileImg, c*TILE_W, r*TILE_H - TILE_H)
+                love.graphics.draw(tileImg, posx + (c*TILE_W), posy + (r*TILE_H) - TILE_H)
             elseif board[r][c] == 3 then
                 -- animation
                 love.graphics.setColor(1,1,1);
-                love.graphics.draw(tileImg, c*TILE_W + TILE_W2, r*TILE_H - TILE_H + TILE_H2, removingAngle, removingScale, removingScale, TILE_W2, TILE_H2)
+                love.graphics.draw(tileImg, posx + (c*TILE_W) + TILE_W2, posy + (r*TILE_H) - TILE_H + TILE_H2, removingAngle, removingScale, removingScale, TILE_W2, TILE_H2)
             else
                 love.graphics.setColor(0.2,0.2,0.2);
-                love.graphics.rectangle("line", c*TILE_W, r*TILE_H - TILE_H, TILE_W, TILE_H)
+                love.graphics.rectangle("line", posx + (c*TILE_W), posy + (r*TILE_H) - TILE_H, TILE_W, TILE_H)
             end
         end
     end
 end
 
-function drawTetromino()
+function drawTetromino(posx, posy)
     love.graphics.setColor(tetrominos[currentTetromino.id].color.r, tetrominos[currentTetromino.id].color.g, tetrominos[currentTetromino.id].color.b);
-    local tx = (currentTetromino.c-1)*TILE_W 
-    local ty = (currentTetromino.r-1)*TILE_H - TILE_H
+    local tx = posx + ((currentTetromino.c-1)*TILE_W)
+    local ty = posy + ((currentTetromino.r-1)*TILE_H) - TILE_H
     for r = 1,tetrominos[currentTetromino.id].h,1 do
         for c = 1,tetrominos[currentTetromino.id].w,1 do
             if tetrominos[currentTetromino.id].shapes[currentTetromino.shape+1][r][c] == 1 then
@@ -834,6 +839,11 @@ function drawMovingTexts()
     end
 end
 
+function drawScore()
+    love.graphics.setColor(1,1,1)
+    love.graphics.print(score, 400, 10)
+end
+
 function love.draw()
     if current_scene == SCENE_ASTEROIDS then
         love.graphics.setColor(1,1,1)
@@ -844,20 +854,20 @@ function love.draw()
         drawHull(10, 10)
         drawFuel(10, 50)
         drawMovingTexts()
-        love.graphics.setColor(1,1,1)
-        love.graphics.print(score, 400, 10)
+        drawScore()
     elseif current_scene == SCENE_TETRIS then
-        drawBoard()
+        drawBoard(BOARD_X, 0)
         if delayBeforeNextScene == 0 then
-            drawTetromino()
+            drawTetromino(BOARD_X, 0)
         end
         -- Cover top side of visible part of board, so that parts of tetrominos rotated out of top edge are not visible
         love.graphics.setColor(0,0,0);
         love.graphics.rectangle("fill", 1*TILE_W, 0, BOARD_W*TILE_W, 2*TILE_H)
     elseif current_scene == SCENE_BASE then
-        drawBoard()
+        drawBoard(0, 0)
         drawHull(14*TILE_W, 2*TILE_H)
         drawMovingTexts()
+        drawScore()
     elseif current_scene == 999 then
         -- debug: draw all large tetroids
         x = TILE_W
@@ -880,6 +890,9 @@ function love.draw()
             end
         end
     end
+    
+    -- love.graphics.setColor(1, 1, 1)
+    -- drawCross(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, love.graphics.getWidth())
 end
 
 function love.keypressed(key, scancode, isrepeat)
@@ -887,8 +900,12 @@ function love.keypressed(key, scancode, isrepeat)
         reset()
     end
     
+    if key == "p" then
+        paused = not paused
+    end
+    
     if key == "d" then
-        if drawDebugInfo == true then drawDebugInfo = false else drawDebugInfo = true end
+        drawDebugInfo = not drawDebugInfo
     end
     
     if current_scene == SCENE_TETRIS then
