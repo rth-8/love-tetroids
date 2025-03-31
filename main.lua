@@ -8,10 +8,12 @@ function love.load()
 
     math.randomseed(os.time())
     
+    bgImg = love.graphics.newImage("gfx/background.png")
     shipImg = love.graphics.newImage("gfx/ship.png")
     tileImg = love.graphics.newImage("gfx/tile.png")
     shieldImg = love.graphics.newImage("gfx/shield.png");
     canisterImg = love.graphics.newImage("gfx/canister.png");
+    weightImg = love.graphics.newImage("gfx/weight.png");
     frameSingleImg = love.graphics.newImage("gfx/frame_single.png");
     frameSegmentedImg = love.graphics.newImage("gfx/frame_segmented.png");
     frameFillImg = love.graphics.newImage("gfx/frame_fill.png");
@@ -45,8 +47,8 @@ function love.load()
     ACCEL = 5
     FRICTION = 0.7
     
-    MIN_WEIGHT = 58
-    MAX_WEIGHT = 288
+    MIN_WEIGHT = 54
+    MAX_WEIGHT = 264
     
     shots = {}
     
@@ -176,6 +178,7 @@ end
 function testcase1()
     board[23] = {2,1,1,1,1,1,1,1,1,1,1,2}
     board[24] = {2,2,2,2,2,2,2,2,2,2,2,2}
+    calculateWeight()
 end
 
 function testcase2()
@@ -184,6 +187,7 @@ function testcase2()
     board[22] = {2,1,1,1,1,1,1,1,1,1,1,2}
     board[23] = {2,1,1,1,1,1,1,1,1,1,1,2}
     board[24] = {2,2,2,2,2,2,2,2,2,2,2,2}
+    calculateWeight()
 end
 
 function changeScene(s, b, a)
@@ -212,6 +216,19 @@ function checkCollisionC(x1, y1, r1, x2, y2, r2)
     local r = (r1 + r2)^2
     if d < r then return true
     else return false end
+end
+
+function calculateWeight()
+    local weight = 0
+    for r = 1,BOARD_H,1 do
+        for c = 1,BOARD_W,1 do
+            if board[r][c] == 1 or board[r][c] == 2 then
+                weight = weight + 1
+            end
+        end
+    end
+    ship.weight = weight
+    print("WEIGHT: "..tostring(ship.weight))
 end
 
 function createTetroidBelt()
@@ -351,7 +368,7 @@ function processInputAsteroids(dt)
     if love.keyboard.isDown("up") then
         ship.vx = ship.vx + ACCEL * dt * math.cos(ship.angle)
         ship.vy = ship.vy + ACCEL * dt * math.sin(ship.angle)
-        ship.fuel = ship.fuel - 0.02
+        ship.fuel = ship.fuel - (0.02 * ship.weight / MIN_WEIGHT)
         ship.thrust = true
     else
         ship.thrust = false
@@ -548,13 +565,16 @@ function checkTetromino(testR, testC, testShp)
 end
 
 function setTetromino()
+    print("SET: Current weight: "..tostring(ship.weight))
     for r = 1,tetrominos[currentTetromino.id].h,1 do
         for c = 1,tetrominos[currentTetromino.id].w,1 do
             if tetrominos[currentTetromino.id].shapes[currentTetromino.shape+1][r][c] == 1 then
                 board[currentTetromino.r+(r-1)][currentTetromino.c+(c-1)] = 1
+                ship.weight = ship.weight + 1
             end
         end
     end
+    print("SET: New weight: "..tostring(ship.weight))
 end
 
 function checkFullLines(ltc)
@@ -577,6 +597,11 @@ function clearLine(idx, val)
     print("Clear line: "..tostring(idx))
     for c=2,11,1 do
         board[idx][c] = val
+    end
+    if val == 0 then
+        print("CLEAR: Current weight: "..tostring(ship.weight))
+        ship.weight = ship.weight - 10
+        print("CLEAR: New weight: "..tostring(ship.weight))
     end
 end
 
@@ -774,9 +799,11 @@ function drawBoard(posx, posy)
     for r = 3,BOARD_H,1 do
         for c = 1,BOARD_W,1 do
             if board[r][c] == 1 then
+                -- placed tile
                 love.graphics.setColor(1,1,1);
                 love.graphics.draw(tileImg, posx + (c*TILE_W), posy + (r*TILE_H) - TILE_H)
             elseif board[r][c] == 2 then
+                -- frame
                 love.graphics.setColor(0.5,0.5,0.5);
                 love.graphics.draw(tileImg, posx + (c*TILE_W), posy + (r*TILE_H) - TILE_H)
             elseif board[r][c] == 3 then
@@ -784,11 +811,18 @@ function drawBoard(posx, posy)
                 love.graphics.setColor(1,1,1);
                 love.graphics.draw(tileImg, posx + (c*TILE_W) + TILE_W2, posy + (r*TILE_H) - TILE_H + TILE_H2, removingAngle, removingScale, removingScale, TILE_W2, TILE_H2)
             else
+                -- empty tile (grid)
                 love.graphics.setColor(0.2,0.2,0.2);
                 love.graphics.rectangle("line", posx + (c*TILE_W), posy + (r*TILE_H) - TILE_H, TILE_W, TILE_H)
             end
         end
     end
+end
+
+function coverTopOfBoard(posx, posy)
+    -- Cover top side of visible part of board, so that parts of tetrominos rotated out of top edge are not visible
+    love.graphics.setColor(0,0,0);
+    love.graphics.rectangle("fill", posx + 1*TILE_W, posy, BOARD_W*TILE_W, 2*TILE_H)
 end
 
 function drawTetromino(posx, posy)
@@ -832,6 +866,12 @@ function drawFuel(posx, posy)
     drawBar(posx + canisterImg:getWidth() + 10, posy, ship.fuel, 100, {0.4,0.4,0.4}, {0,1,1}, false)
 end
 
+function drawWeight(posx, posy)
+    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.draw(weightImg, posx, posy)
+    drawBar(posx + weightImg:getWidth() + 10, posy, ship.weight, MAX_WEIGHT, {0.4,0.4,0.4}, {1,0.5,0}, false)
+end
+
 function drawMovingTexts()
     love.graphics.setColor(1, 1, 1)
     for _, t in ipairs(movingTexts) do
@@ -847,12 +887,14 @@ end
 function love.draw()
     if current_scene == SCENE_ASTEROIDS then
         love.graphics.setColor(1,1,1)
+        love.graphics.draw(bgImg, 0, 0)
         love.graphics.circle("fill", base.x, base.y, base.radius)
         drawShip()
         drawShots()
         drawTetroids()
         drawHull(10, 10)
         drawFuel(10, 50)
+        drawWeight(10, 90)
         drawMovingTexts()
         drawScore()
     elseif current_scene == SCENE_TETRIS then
@@ -860,11 +902,10 @@ function love.draw()
         if delayBeforeNextScene == 0 then
             drawTetromino(BOARD_X, 0)
         end
-        -- Cover top side of visible part of board, so that parts of tetrominos rotated out of top edge are not visible
-        love.graphics.setColor(0,0,0);
-        love.graphics.rectangle("fill", 1*TILE_W, 0, BOARD_W*TILE_W, 2*TILE_H)
+        coverTopOfBoard(BOARD_X, 0)
     elseif current_scene == SCENE_BASE then
         drawBoard(0, 0)
+        coverTopOfBoard(0, 0)
         drawHull(14*TILE_W, 2*TILE_H)
         drawMovingTexts()
         drawScore()
@@ -891,7 +932,8 @@ function love.draw()
         end
     end
     
-    -- love.graphics.setColor(1, 1, 1)
+    -- axes (debug)
+    -- love.graphics.setColor(0, 1, 0)
     -- drawCross(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, love.graphics.getWidth())
 end
 
