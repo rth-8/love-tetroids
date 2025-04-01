@@ -100,9 +100,10 @@ function love.load()
     
     score = 0
     
-    SCENE_ASTEROIDS = 1
-    SCENE_TETRIS = 2
-    SCENE_BASE = 3
+    SCENE_MENU = 1
+    SCENE_ASTEROIDS = 2
+    SCENE_TETRIS = 3
+    SCENE_BASE = 4
     
     delayBeforeNextScene = 0
     delayAfterNextScene = 0
@@ -752,10 +753,13 @@ function drawShip()
     love.graphics.push()
     
     love.graphics.translate(ship.x, ship.y)
-    love.graphics.rotate(ship.angle)
-    
+
+    love.graphics.push()
+    love.graphics.rotate(ship.angle + math.pi*0.5)
     love.graphics.draw(shipImg, -shipImgW2, -shipImgH2)
+    love.graphics.pop()
     
+    love.graphics.rotate(ship.angle)
     if ship.thrust then
         love.graphics.setColor(1, 1, 0)
         love.graphics.draw(thrusterImg, thrusterFrames[(currentFrame % #thrusterFrames)+1], -shipImg:getWidth(), -8)
@@ -839,7 +843,7 @@ function drawTetromino(posx, posy)
                 love.graphics.draw(tileImg, tx + (c*TILE_W), ty + (r*TILE_H))
             end
             if drawDebugInfo == true then
-                love.graphics.rectangle("fill", tx + (c*TILE_W) + TILE_W/2, ty + (r*TILE_H) + TILE_H/2, 2, 2)
+                love.graphics.rectangle("fill", tx + (c*TILE_W) + TILE_W*0.5, ty + (r*TILE_H) + TILE_H*0.5, 2, 2)
             end
         end
     end
@@ -888,7 +892,7 @@ function drawScore(posx, posy)
     love.graphics.setColor(1, 1, 0)
     love.graphics.draw(moneyImg, posx, posy)
     love.graphics.setFont(fontScore)
-    love.graphics.print(score, posx + moneyImg:getWidth() + 10, posy + moneyImg:getHeight()/2 - fontScore:getHeight()/2)
+    love.graphics.print(score, posx + moneyImg:getWidth() + 10, posy + moneyImg:getHeight()*0.5 - fontScore:getHeight()*0.5)
 end
 
 function love.draw()
@@ -903,7 +907,7 @@ function love.draw()
         drawFuel(10, 50)
         drawWeight(10, 90)
         drawMovingTexts()
-        drawScore(love.graphics.getWidth() / 2, 10)
+        drawScore(love.graphics.getWidth()*0.5, 10)
     elseif current_scene == SCENE_TETRIS then
         drawBoard(BOARD_X, 0)
         if delayBeforeNextScene == 0 then
@@ -915,7 +919,7 @@ function love.draw()
         coverTopOfBoard(0, 0)
         drawHull(14*TILE_W, 2*TILE_H)
         drawMovingTexts()
-        drawScore(love.graphics.getWidth() / 2, 10)
+        drawScore(love.graphics.getWidth()*0.5, 10)
     elseif current_scene == 999 then
         -- debug: draw all large tetroids
         x = TILE_W
@@ -942,7 +946,7 @@ function love.draw()
     -- axes
     if drawDebugInfo then
         love.graphics.setColor(0, 1, 0)
-        drawCross(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, love.graphics.getWidth())
+        drawCross(love.graphics.getWidth()*0.5, love.graphics.getHeight()*0.5, love.graphics.getWidth())
     end
 end
 
@@ -959,6 +963,18 @@ function love.keypressed(key, scancode, isrepeat)
         drawDebugInfo = not drawDebugInfo
     end
     
+    if current_scene == SCENE_MENU then
+        if key == "escape" then
+            love.event.quit()
+        end
+    end
+
+    if current_scene == SCENE_ASTEROIDS then
+        if key == "escape" then
+            changeScene(SCENE_MENU, 1, 1)
+        end
+    end
+
     if current_scene == SCENE_TETRIS then
         -- rotate
         if key == "space" then
@@ -968,13 +984,13 @@ function love.keypressed(key, scancode, isrepeat)
             end
         end
     end
-    
+
     if current_scene == SCENE_BASE then
         if removingLines == 0 then
             if key == "escape" then
                 ship.iframes = 120
-                ship.angle = -math.pi / 2
-                ship.x = love.graphics.getWidth() / 2
+                ship.angle = -math.pi*0.5
+                ship.x = love.graphics.getWidth()*0.5
                 ship.y = base.y - base.radius - ship.radius - 4
                 ship.vx = 0
                 ship.vy = 0
