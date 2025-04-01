@@ -8,12 +8,16 @@ function love.load()
 
     math.randomseed(os.time())
     
+    fontScore = love.graphics.newFont("fonts/normal.ttf", 20)
+    fontMoving = love.graphics.newFont("fonts/moving.ttf", 16)
+    
     bgImg = love.graphics.newImage("gfx/background.png")
     shipImg = love.graphics.newImage("gfx/ship.png")
     tileImg = love.graphics.newImage("gfx/tile.png")
     shieldImg = love.graphics.newImage("gfx/shield.png");
     canisterImg = love.graphics.newImage("gfx/canister.png");
     weightImg = love.graphics.newImage("gfx/weight.png");
+    moneyImg = love.graphics.newImage("gfx/money.png");
     frameSingleImg = love.graphics.newImage("gfx/frame_single.png");
     frameSegmentedImg = love.graphics.newImage("gfx/frame_segmented.png");
     frameFillImg = love.graphics.newImage("gfx/frame_fill.png");
@@ -737,12 +741,12 @@ function drawShip()
     -- iframes blinking
     if ship.iframes > 0 then
         if ship.iframes % 6 == 0 then
-            love.graphics.setColor(0, 1, 0)
+            love.graphics.setColor(1, 1, 1)
         else
             love.graphics.setColor(0, 0, 0)
         end
     else
-        love.graphics.setColor(0, 1, 0)
+        love.graphics.setColor(1, 1, 1)
     end
     
     love.graphics.push()
@@ -874,14 +878,17 @@ end
 
 function drawMovingTexts()
     love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(fontMoving)
     for _, t in ipairs(movingTexts) do
         love.graphics.print(t.txt, t.x, t.y)
     end
 end
 
-function drawScore()
-    love.graphics.setColor(1,1,1)
-    love.graphics.print(score, 400, 10)
+function drawScore(posx, posy)
+    love.graphics.setColor(1, 1, 0)
+    love.graphics.draw(moneyImg, posx, posy)
+    love.graphics.setFont(fontScore)
+    love.graphics.print(score, posx + moneyImg:getWidth() + 10, posy + moneyImg:getHeight()/2 - fontScore:getHeight()/2)
 end
 
 function love.draw()
@@ -896,7 +903,7 @@ function love.draw()
         drawFuel(10, 50)
         drawWeight(10, 90)
         drawMovingTexts()
-        drawScore()
+        drawScore(love.graphics.getWidth() / 2, 10)
     elseif current_scene == SCENE_TETRIS then
         drawBoard(BOARD_X, 0)
         if delayBeforeNextScene == 0 then
@@ -908,7 +915,7 @@ function love.draw()
         coverTopOfBoard(0, 0)
         drawHull(14*TILE_W, 2*TILE_H)
         drawMovingTexts()
-        drawScore()
+        drawScore(love.graphics.getWidth() / 2, 10)
     elseif current_scene == 999 then
         -- debug: draw all large tetroids
         x = TILE_W
@@ -932,9 +939,11 @@ function love.draw()
         end
     end
     
-    -- axes (debug)
-    -- love.graphics.setColor(0, 1, 0)
-    -- drawCross(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, love.graphics.getWidth())
+    -- axes
+    if drawDebugInfo then
+        love.graphics.setColor(0, 1, 0)
+        drawCross(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2, love.graphics.getWidth())
+    end
 end
 
 function love.keypressed(key, scancode, isrepeat)
