@@ -1,6 +1,10 @@
 require "tetrominos"
 require "tetroids"
 
+local Button = require "rth_button2"
+local menu_elements = {}
+local base_elements = {}
+
 local ONE_RAD = math.pi / 180
 
 function love.load()
@@ -8,7 +12,8 @@ function love.load()
 
     math.randomseed(os.time())
     
-    fontScore = love.graphics.newFont("fonts/normal.ttf", 20)
+    fontMenuNormal = love.graphics.newFont("fonts/normal.ttf", 20)
+    fontMenuSmall = love.graphics.newFont("fonts/normal.ttf", 12)
     fontMoving = love.graphics.newFont("fonts/moving.ttf", 16)
     
     bgImg = love.graphics.newImage("gfx/background.png")
@@ -43,6 +48,28 @@ function love.load()
     MAX_BAR_W = frameSingleImg:getWidth()
     MAX_BAR_H = frameSingleImg:getHeight()
     
+    -- Menu
+    
+    table.insert(menu_elements, Button:new(love.graphics.getWidth()/2 - 200, 250, 400, 50, "NEW GAME", menuNewGame))
+    table.insert(menu_elements, Button:new(love.graphics.getWidth()/2 - 200, 350, 400, 50, "SETTINGS", nil))
+    table.insert(menu_elements, Button:new(love.graphics.getWidth()/2 - 200, 450, 400, 50, "QUIT", love.event.quit))
+    menu_elements[1]:setFont(fontMenuNormal)
+    menu_elements[2]:setFont(fontMenuNormal)
+    menu_elements[3]:setFont(fontMenuNormal)
+    
+    logo = {
+        {0,0},{1,0},{2,0}, {4,0},{5,0},{6,0}, {8,0},{9,0},{10,0}, {12,0},{13,0},        {16,0},{17,0},{18,0}, {20,0},{21,0},{22,0}, {24,0},{25,0},        {28,0},{29,0},{30,0},
+              {1,1},       {4,1},                   {9,1},        {12,1},       {14,1}, {16,1},       {18,1},        {21,1},        {24,1},       {26,1}, {28,1},
+              {1,2},       {4,2},{5,2},             {9,2},        {12,2},{13,2},        {16,2},       {18,2},        {21,2},        {24,2},       {26,2}, {28,2},{29,2},{30,2},
+              {1,3},       {4,3},                   {9,3},        {12,3},       {14,3}, {16,3},       {18,3},        {21,3},        {24,3},       {26,3},               {30,3},
+              {1,4},       {4,4},{5,4},{6,4},       {9,4},        {12,4},       {14,4}, {16,4},{17,4},{18,4}, {20,4},{21,4},{22,4}, {24,4},{25,4},        {28,4},{29,4},{30,4},
+    }
+    logo_colors = {}
+    setLogoColors()
+    
+    LOGO_X = love.graphics.getWidth() / 2 - (31 * TILE_W) / 2
+    LOGO_Y = TILE_H * 2
+    
     -- Asteroids
     
     ship = {}
@@ -51,6 +78,8 @@ function love.load()
     ACCEL = 5
     FRICTION = 0.7
     
+    MAX_HULL = 100
+    MAX_FUEL = 100
     MIN_WEIGHT = 54
     MAX_WEIGHT = 264
     
@@ -87,6 +116,11 @@ function love.load()
         radius = shipImgW2*2,
     }
     
+    table.insert(base_elements, Button:new(25*TILE_W, 3*TILE_H, 100, 30, "$ 100", repairHull))
+    table.insert(base_elements, Button:new(25*TILE_W, 5*TILE_H, 100, 30, "$ 100", tankFuel))
+    base_elements[1]:setFont(fontMenuSmall)
+    base_elements[2]:setFont(fontMenuSmall)
+    
     linesToClear = {}
     removingLines = 0
     removingAngle = 0
@@ -94,21 +128,24 @@ function love.load()
     
     REMOVING_LINES_COUNTER_MAX = 30
     
-    movingTexts = {}
-    
     -- General
     
-    score = 0
+    currentFrame = 1
+    
+    movingTexts = {}
+    
+    money = 0
     
     SCENE_MENU = 1
     SCENE_ASTEROIDS = 2
     SCENE_TETRIS = 3
     SCENE_BASE = 4
     
+    current_scene = SCENE_MENU
+    next_scene = 0
+    
     delayBeforeNextScene = 0
     delayAfterNextScene = 0
-    
-    reset()
     
     drawDebugInfo = false
     paused = false
@@ -125,9 +162,6 @@ function reset()
         tetroids[i] = nil
     end
 
-    current_scene = SCENE_ASTEROIDS
-    next_scene = 0
-    
     ship.radius = shipImgW2
     ship.x = love.graphics.getWidth() / 2
     ship.y = base.y - base.radius - ship.radius - 4
@@ -137,15 +171,15 @@ function reset()
     ship.thrust = false
     ship.shootingFrame = 10
     ship.iframes = 0
-    ship.hull = 100
-    ship.fuel = 100
+    ship.hull = MAX_HULL
+    ship.fuel = MAX_FUEL
     ship.weight = MIN_WEIGHT
     
     createTetroidBelt()
     
     resetBoard()
     
-    score = 0
+    money = 0
     
     currentFrame = 1
     
@@ -193,6 +227,13 @@ function testcase2()
     board[23] = {2,1,1,1,1,1,1,1,1,1,1,2}
     board[24] = {2,2,2,2,2,2,2,2,2,2,2,2}
     calculateWeight()
+end
+
+function setLogoColors()
+    for i=1,#logo,1 do
+        cidx = math.random(1, 7)
+        logo_colors[i] = {tetrominos[cidx].color.r, tetrominos[cidx].color.g, tetrominos[cidx].color.b}
+    end
 end
 
 function changeScene(s, b, a)
@@ -468,14 +509,14 @@ function processShots(dt)
                 -- second: fine collision
                 if checkShotCollisionWithTetroid(shot.x, shot.y, t) == true then
                     if t.shape == 1 then 
-                        score = score + 50
-                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ 50", timer = 50 })
+                        money = money + 50
+                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ $50", timer = 50 })
                     elseif t.shape == 2 or t.shape == 3 then 
-                        score = score + 30
-                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ 30", timer = 50 })
+                        money = money + 30
+                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ $30", timer = 50 })
                     else 
-                        score = score + 10
-                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ 10", timer = 50 })
+                        money = money + 10
+                        table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ $10", timer = 50 })
                     end
                     t.alive = false
                     shot.alive = false
@@ -658,6 +699,13 @@ function love.update(dt)
         delayBeforeNextScene = delayBeforeNextScene - 1
         if delayBeforeNextScene == 0 then
             assert(next_scene ~= 0, "Invalid scene ("..tostring(next_scene)..")!")
+            if next_scene == SCENE_MENU then
+                for _, e in ipairs(menu_elements) do
+                    if e:typeName() == "button2" then
+                        e.isHoover = false
+                    end
+                end
+            end
             current_scene = next_scene
             next_scene = 0
         else
@@ -668,10 +716,16 @@ function love.update(dt)
     if delayBeforeNextScene == 0 and delayAfterNextScene > 0 then
         print("Wait after scene changed...")
         delayAfterNextScene = delayAfterNextScene - 1
+        -- if delayAfterNextScene == 0 then
+        -- end
         return
     end
     
-    if current_scene == SCENE_ASTEROIDS then
+    if current_scene == SCENE_MENU then
+        if currentFrame % 10 == 0 then
+            setLogoColors()
+        end
+    elseif current_scene == SCENE_ASTEROIDS then
         processInputAsteroids(dt)
         moveShip(dt)
         processShots(dt)
@@ -696,8 +750,8 @@ function love.update(dt)
         if removingLines > 0 then
             if removingLines == REMOVING_LINES_COUNTER_MAX-1 then
                 for _, line in ipairs(linesToClear) do
-                    score = score + 100
-                    table.insert(movingTexts, { x = BOARD_W*TILE_W+TILE_W2, y = (line-1)*TILE_H, txt = " + 100", timer = 50 })
+                    money = money + 100
+                    table.insert(movingTexts, { x = BOARD_W*TILE_W+TILE_W2, y = (line-1)*TILE_H, txt = "+ $100", timer = 50 })
                 end
             end
             removingLines = removingLines - 1
@@ -865,13 +919,13 @@ end
 function drawHull(posx, posy)
     love.graphics.setColor(0, 1, 0)
     love.graphics.draw(shieldImg, posx, posy)
-    drawBar(posx + shieldImg:getWidth() + 10, posy, ship.hull, 100, {0.4,0.4,0.4}, {0,1,0}, true)
+    drawBar(posx + shieldImg:getWidth() + 10, posy, ship.hull, MAX_HULL, {0.4,0.4,0.4}, {0,1,0}, true)
 end
 
 function drawFuel(posx, posy)
     love.graphics.setColor(0, 1, 1)
     love.graphics.draw(canisterImg, posx, posy)
-    drawBar(posx + canisterImg:getWidth() + 10, posy, ship.fuel, 100, {0.4,0.4,0.4}, {0,1,1}, false)
+    drawBar(posx + canisterImg:getWidth() + 10, posy, ship.fuel, MAX_FUEL, {0.4,0.4,0.4}, {0,1,1}, false)
 end
 
 function drawWeight(posx, posy)
@@ -888,15 +942,27 @@ function drawMovingTexts()
     end
 end
 
-function drawScore(posx, posy)
+function drawMoney(posx, posy)
     love.graphics.setColor(1, 1, 0)
     love.graphics.draw(moneyImg, posx, posy)
-    love.graphics.setFont(fontScore)
-    love.graphics.print(score, posx + moneyImg:getWidth() + 10, posy + moneyImg:getHeight()*0.5 - fontScore:getHeight()*0.5)
+    love.graphics.setFont(fontMenuNormal)
+    love.graphics.print(money, posx + moneyImg:getWidth() + 10, posy + moneyImg:getHeight()*0.5 - fontMenuNormal:getHeight()*0.5)
 end
 
 function love.draw()
-    if current_scene == SCENE_ASTEROIDS then
+    love.graphics.setColor(1,1,1)
+    
+    if current_scene == SCENE_MENU then
+        -- logo
+        for i, p in ipairs(logo) do
+            love.graphics.setColor(logo_colors[i][1], logo_colors[i][2], logo_colors[i][3])
+            love.graphics.draw(tileImg, LOGO_X + TILE_W * p[1], LOGO_Y + TILE_H * p[2])
+        end
+        -- ui
+        for _, e in ipairs(menu_elements) do
+            e:draw()
+        end
+    elseif current_scene == SCENE_ASTEROIDS then
         love.graphics.setColor(1,1,1)
         love.graphics.draw(bgImg, 0, 0)
         love.graphics.circle("fill", base.x, base.y, base.radius)
@@ -907,7 +973,7 @@ function love.draw()
         drawFuel(10, 50)
         drawWeight(10, 90)
         drawMovingTexts()
-        drawScore(love.graphics.getWidth()*0.5, 10)
+        drawMoney(love.graphics.getWidth()*0.5, 10)
     elseif current_scene == SCENE_TETRIS then
         drawBoard(BOARD_X, 0)
         if delayBeforeNextScene == 0 then
@@ -915,11 +981,16 @@ function love.draw()
         end
         coverTopOfBoard(BOARD_X, 0)
     elseif current_scene == SCENE_BASE then
-        drawBoard(0, 0)
+        drawBoard(0, TILE_H)
         coverTopOfBoard(0, 0)
-        drawHull(14*TILE_W, 2*TILE_H)
+        drawHull(14*TILE_W, 3*TILE_H)
+        drawFuel(14*TILE_W, 5*TILE_H)
+        -- ui
+        for _, e in ipairs(base_elements) do
+            e:draw()
+        end
         drawMovingTexts()
-        drawScore(love.graphics.getWidth()*0.5, 10)
+        drawMoney(love.graphics.getWidth()*0.5, 10)
     elseif current_scene == 999 then
         -- debug: draw all large tetroids
         x = TILE_W
@@ -996,6 +1067,69 @@ function love.keypressed(key, scancode, isrepeat)
                 ship.vy = 0
                 changeScene(SCENE_ASTEROIDS, 1, 30)
             end
+        end
+    end
+end
+
+function love.mousepressed(x, y, button, istouch, presses)
+    if current_scene == SCENE_MENU then
+        for _, e in ipairs(menu_elements) do
+            e:checkClick(x, y)
+        end
+    elseif current_scene == SCENE_BASE then
+        for _, e in ipairs(base_elements) do
+            e:checkClick(x, y)
+        end
+    end
+end
+
+function love.mousemoved(x, y, dx, dy, istouch)
+    if current_scene == SCENE_MENU then
+        for _, e in ipairs(menu_elements) do
+            e:checkHoover(x, y)
+        end
+    elseif current_scene == SCENE_BASE then
+        for _, e in ipairs(base_elements) do
+            e:checkHoover(x, y)
+        end
+    end
+end
+
+function love.mousereleased(x, y, button, istouch, presses)
+    if current_scene == SCENE_MENU then
+        for _, e in ipairs(menu_elements) do
+            e:reset()
+        end
+    elseif current_scene == SCENE_BASE then
+        for _, e in ipairs(base_elements) do
+            e:reset()
+        end
+    end
+end
+
+function menuNewGame()
+    reset()
+    changeScene(SCENE_ASTEROIDS, 20, 30)
+end
+
+function repairHull()
+    money = money - 100
+    table.insert(movingTexts, { x = 29*TILE_W + 10, y = 3*TILE_H, txt = "- $100", timer = 50 })
+    if ship.hull < MAX_HULL then
+        ship.hull = ship.hull + 10
+        if ship.hull > MAX_HULL then
+            ship.hull = MAX_HULL
+        end
+    end
+end
+
+function tankFuel()
+    money = money - 100
+    table.insert(movingTexts, { x = 29*TILE_W + 10, y = 5*TILE_H, txt = "- $100", timer = 50 })
+    if ship.fuel < MAX_FUEL then
+        ship.fuel = ship.fuel + 10
+        if ship.fuel > MAX_FUEL then
+            ship.fuel = MAX_FUEL
         end
     end
 end
