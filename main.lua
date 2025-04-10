@@ -19,22 +19,40 @@ function love.load()
     bgImg = love.graphics.newImage("gfx/background.png")
     shipImg = love.graphics.newImage("gfx/ship.png")
     tileImg = love.graphics.newImage("gfx/tile.png")
-    shieldImg = love.graphics.newImage("gfx/shield.png");
-    canisterImg = love.graphics.newImage("gfx/canister.png");
-    weightImg = love.graphics.newImage("gfx/weight.png");
-    moneyImg = love.graphics.newImage("gfx/money.png");
-    frameSingleImg = love.graphics.newImage("gfx/frame_single.png");
-    frameSegmentedImg = love.graphics.newImage("gfx/frame_segmented.png");
-    frameFillImg = love.graphics.newImage("gfx/frame_fill.png");
-    thrusterImg = love.graphics.newImage("gfx/thruster.png");
+    shieldImg = love.graphics.newImage("gfx/shield.png")
+    canisterImg = love.graphics.newImage("gfx/canister.png")
+    weightImg = love.graphics.newImage("gfx/weight.png")
+    moneyImg = love.graphics.newImage("gfx/money.png")
+    frameSingleImg = love.graphics.newImage("gfx/frame_single.png")
+    frameSegmentedImg = love.graphics.newImage("gfx/frame_segmented.png")
+    frameFillImg = love.graphics.newImage("gfx/frame_fill.png")
+    thrusterImg = love.graphics.newImage("gfx/thruster.png")
+    explosionImg = love.graphics.newImage("gfx/explosion.png")
     
     thrusterFrames = {
-        love.graphics.newQuad(0*16, 0, 16, 16, 6*16, 16),
-        love.graphics.newQuad(1*16, 0, 16, 16, 6*16, 16),
-        love.graphics.newQuad(2*16, 0, 16, 16, 6*16, 16),
-        love.graphics.newQuad(3*16, 0, 16, 16, 6*16, 16),
-        love.graphics.newQuad(4*16, 0, 16, 16, 6*16, 16),
-        love.graphics.newQuad(5*16, 0, 16, 16, 6*16, 16),
+        love.graphics.newQuad(0*16, 0, 16, 16, thrusterImg:getWidth(), thrusterImg:getHeight()),
+        love.graphics.newQuad(1*16, 0, 16, 16, thrusterImg:getWidth(), thrusterImg:getHeight()),
+        love.graphics.newQuad(2*16, 0, 16, 16, thrusterImg:getWidth(), thrusterImg:getHeight()),
+        love.graphics.newQuad(3*16, 0, 16, 16, thrusterImg:getWidth(), thrusterImg:getHeight()),
+        love.graphics.newQuad(4*16, 0, 16, 16, thrusterImg:getWidth(), thrusterImg:getHeight()),
+        love.graphics.newQuad(5*16, 0, 16, 16, thrusterImg:getWidth(), thrusterImg:getHeight()),
+    }
+    
+    explosionFrames = {
+        love.graphics.newQuad(0*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(1*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(2*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(3*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(4*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(5*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(6*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(7*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(8*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(9*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(10*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(11*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(12*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
+        love.graphics.newQuad(13*72, 0, 72, 72, explosionImg:getWidth(), explosionImg:getHeight()),
     }
     
     shipImgW2 = shipImg:getWidth() / 2
@@ -44,6 +62,9 @@ function love.load()
     TILE_W2 = TILE_W/2
     TILE_H = 24
     TILE_H2 = TILE_H/2
+    
+    EXPLOSION_W2 = 72/2
+    EXPLOSION_H2 = 72/2
     
     MAX_BAR_W = frameSingleImg:getWidth()
     MAX_BAR_H = frameSingleImg:getHeight()
@@ -132,6 +153,7 @@ function love.load()
     
     currentFrame = 1
     
+    explosions = {}
     movingTexts = {}
     
     money = 0
@@ -160,6 +182,16 @@ function reset()
     local count = #tetroids
     for i = 0,count do 
         tetroids[i] = nil
+    end
+    
+    local count = #explosions
+    for i = 0,count do 
+        explosions[i] = nil
+    end
+    
+    local count = #movingTexts
+    for i = 0,count do 
+        movingTexts[i] = nil
     end
 
     ship.radius = shipImgW2
@@ -331,6 +363,15 @@ function createTetroid(x, y, id, shp)
     return t
 end
 
+function createExplosion(posx, posy)
+    table.insert(explosions, {
+        x = posx,
+        y = posy,
+        frm = 1,
+        alive = true,
+    })
+end
+
 function moveTetroid(t, dt)
     t.x = t.x + t.vx * dt
     t.y = t.y + t.vy * dt
@@ -460,7 +501,7 @@ end
 
 function respawnShip()
     ship.x = love.graphics.getWidth() / 2
-    ship.y = love.graphics.getHeight() / 2
+    ship.y = base.y - base.radius - ship.radius - 4
     ship.angle = -math.pi / 2
     ship.vx = 0
     ship.vy = 0
@@ -517,6 +558,7 @@ function processShots(dt)
                     else 
                         money = money + 10
                         table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ $10", timer = 50 })
+                        createExplosion(t.x - EXPLOSION_W2, t.y - EXPLOSION_H2)
                     end
                     t.alive = false
                     shot.alive = false
@@ -558,6 +600,7 @@ function processTetroids(dt)
                         currentTetromino.c = tetrominos[currentTetromino.id].startC
                         changeScene(SCENE_TETRIS, 1, 30)
                     else
+                        createExplosion(ship.x - EXPLOSION_W2, ship.y - EXPLOSION_H2)
                         respawnShip()
                     end
                 end
@@ -596,6 +639,14 @@ function cleanTetroids()
 
     for _, t in ipairs(toBeAdded) do
         table.insert(tetroids, t)
+    end
+end
+
+function cleanExplosions()
+    for i=#explosions,1,-1 do
+        if explosions[i].alive == false then
+            table.remove(explosions, i)
+        end
     end
 end
 
@@ -691,6 +742,17 @@ function processMovingTexts()
     end
 end
 
+function processExplosions()
+    for _, expl in ipairs(explosions) do
+        if currentFrame % 2 == 0 then
+            expl.frm = expl.frm + 1
+            if expl.frm > #explosionFrames then
+                expl.alive = false
+            end
+        end
+    end
+end
+
 function love.update(dt)
     if paused then return end
     
@@ -726,13 +788,17 @@ function love.update(dt)
             setLogoColors()
         end
     elseif current_scene == SCENE_ASTEROIDS then
+        -- process
         processInputAsteroids(dt)
         moveShip(dt)
         processShots(dt)
         processTetroids(dt)
+        processExplosions()
+        processMovingTexts()
+        -- clean
         cleanShots()
         cleanTetroids()
-        processMovingTexts()
+        cleanExplosions()
     elseif current_scene == SCENE_TETRIS then
         processInputTetris(dt)
         if currentFrame % TETRIS_SPEED == 0 then
@@ -949,6 +1015,13 @@ function drawMoney(posx, posy)
     love.graphics.print(money, posx + moneyImg:getWidth() + 10, posy + moneyImg:getHeight()*0.5 - fontMenuNormal:getHeight()*0.5)
 end
 
+function drawExplosions()
+    love.graphics.setColor(1, 1, 1)
+    for _, expl in ipairs(explosions) do
+        love.graphics.draw(explosionImg, explosionFrames[expl.frm], expl.x, expl.y)
+    end
+end
+
 function love.draw()
     love.graphics.setColor(1,1,1)
     
@@ -969,6 +1042,7 @@ function love.draw()
         drawShip()
         drawShots()
         drawTetroids()
+        drawExplosions()
         drawHull(10, 10)
         drawFuel(10, 50)
         drawWeight(10, 90)
