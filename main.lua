@@ -69,6 +69,13 @@ function love.load()
     MAX_BAR_W = frameSingleImg:getWidth()
     MAX_BAR_H = frameSingleImg:getHeight()
     
+    sndMenuChange = love.audio.newSource("sounds/menu_change.wav", "static")
+    sndThruster = love.audio.newSource("sounds/thruster.wav", "static")
+    sndThruster:setLooping(true)
+    sndBasicShot = love.audio.newSource("sounds/shot.wav", "static")
+    sndExplosion = love.audio.newSource("sounds/explosion.wav", "static")
+    sndPlaceTetromino = love.audio.newSource("sounds/place.wav", "static")
+
     -- Menu
     
     table.insert(menu_elements, Button:new(love.graphics.getWidth()/2 - 200, 250, 400, 50, "NEW GAME", menuNewGame))
@@ -282,6 +289,9 @@ function changeScene(s, b, a)
     delayBeforeNextScene = b
     delayAfterNextScene = a
     next_scene = s
+
+    love.audio.stop(sndExplosion)
+    love.audio.stop(sndThruster)
 end
 
 function randomAngle()
@@ -324,6 +334,7 @@ function createTetroidBelt()
         local x = 0
         local y = 0
         repeat
+            x = math.random(0, love.graphics.getWidth())
             x = math.random(0, love.graphics.getWidth())
             y = math.random(0, love.graphics.getHeight())
             d = dist(ship.x, ship.y, x, y)
@@ -379,6 +390,8 @@ function createExplosion(posx, posy)
         frm = 1,
         alive = true,
     })
+    love.audio.stop(sndExplosion)
+    love.audio.play(sndExplosion)
 end
 
 function moveTetroid(t, dt)
@@ -466,10 +479,12 @@ function processInputAsteroids(dt)
         ship.vy = ship.vy + ACCEL * dt * math.sin(ship.angle)
         ship.fuel = ship.fuel - (0.02 * ship.weight / MIN_WEIGHT)
         ship.thrust = true
+        love.audio.play(sndThruster)
     else
         ship.thrust = false
+        love.audio.stop(sndThruster)
     end
-    
+
     if love.keyboard.isDown("space") then
         if ship.shootingFrame % 10 == 0 then
             table.insert(shots, {
@@ -479,6 +494,8 @@ function processInputAsteroids(dt)
                 vy = SPEED*2 * math.sin(ship.angle),
                 alive = true,
             })
+            love.audio.stop(sndBasicShot)
+            love.audio.play(sndBasicShot)
         end
         ship.shootingFrame = ship.shootingFrame + 1
     else
@@ -491,18 +508,21 @@ function processInputTetris(dt)
         if love.keyboard.isDown("left") then
             if checkTetromino(currentTetromino.r, currentTetromino.c-1, currentTetromino.shape) == true then
                 currentTetromino.c = currentTetromino.c - 1
+                if sndMenuChange:isPlaying() == false then love.audio.play(sndMenuChange) end
             end
         end
 
         if love.keyboard.isDown("right") then
             if checkTetromino(currentTetromino.r, currentTetromino.c+1, currentTetromino.shape) == true then
                 currentTetromino.c = currentTetromino.c + 1
+                if sndMenuChange:isPlaying() == false then love.audio.play(sndMenuChange) end
             end
         end
 
         if love.keyboard.isDown("down") then
             if checkTetromino(currentTetromino.r+1, currentTetromino.c, currentTetromino.shape) == true then
                 currentTetromino.r = currentTetromino.r + 1
+                if sndMenuChange:isPlaying() == false then love.audio.play(sndMenuChange) end
             end
         end
     end
@@ -561,9 +581,13 @@ function processShots(dt)
                     if t.shape == 1 then 
                         money = money + 50
                         table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ $50", timer = 50 })
+                        love.audio.stop(sndPlaceTetromino)
+                        love.audio.play(sndPlaceTetromino)
                     elseif t.shape == 2 or t.shape == 3 then 
                         money = money + 30
                         table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ $30", timer = 50 })
+                        love.audio.stop(sndPlaceTetromino)
+                        love.audio.play(sndPlaceTetromino)
                     else 
                         money = money + 10
                         table.insert(movingTexts, { x = shot.x, y = shot.y, txt = "+ $10", timer = 50 })
@@ -609,6 +633,8 @@ function processTetroids(dt)
                         currentTetromino.c = tetrominos[currentTetromino.id].startC
                         changeScene(SCENE_TETRIS, 1, 30)
                     else
+                        love.audio.stop(sndPlaceTetromino)
+                        love.audio.play(sndPlaceTetromino)
                         createExplosion(ship.x - EXPLOSION_W2, ship.y - EXPLOSION_H2)
                         respawnShip()
                     end
@@ -671,7 +697,7 @@ function checkTetromino(testR, testC, testShp)
 end
 
 function setTetromino()
-    print("SET: Current weight: "..tostring(ship.weight))
+    -- print("SET: Current weight: "..tostring(ship.weight))
     for r = 1,tetrominos[currentTetromino.id].h,1 do
         for c = 1,tetrominos[currentTetromino.id].w,1 do
             if tetrominos[currentTetromino.id].shapes[currentTetromino.shape+1][r][c] == 1 then
@@ -680,7 +706,9 @@ function setTetromino()
             end
         end
     end
-    print("SET: New weight: "..tostring(ship.weight))
+    love.audio.stop(sndPlaceTetromino)
+    love.audio.play(sndPlaceTetromino)
+    -- print("SET: New weight: "..tostring(ship.weight))
 end
 
 function checkFullLines(ltc)
@@ -808,6 +836,14 @@ function love.update(dt)
         cleanShots()
         cleanTetroids()
         cleanExplosions()
+
+        -- make thruster sound looping seamless
+        if sndThruster:isPlaying() then
+            if sndThruster:tell() > 2.0 then
+                sndThruster:seek(0.1)
+            end
+        end
+
     elseif current_scene == SCENE_TETRIS then
         processInputTetris(dt)
         if currentFrame % TETRIS_SPEED == 0 then
@@ -1128,14 +1164,22 @@ function love.keypressed(key, scancode, isrepeat)
         if key == "up" then
             print("MENU: up")
             menu_elements[menu_focus]:setFocus(false)
-            if menu_focus > 1 then menu_focus = menu_focus - 1 end
+            if menu_focus > 1 then 
+                menu_focus = menu_focus - 1
+                love.audio.stop(sndMenuChange)
+                love.audio.play(sndMenuChange)
+            end
             menu_elements[menu_focus]:setFocus(true)
         end
         
         if key == "down" then
             print("MENU: down")
             menu_elements[menu_focus]:setFocus(false)
-            if menu_focus < #menu_elements then menu_focus = menu_focus + 1 end
+            if menu_focus < #menu_elements then 
+                menu_focus = menu_focus + 1
+                love.audio.stop(sndMenuChange)
+                love.audio.play(sndMenuChange)
+            end
             menu_elements[menu_focus]:setFocus(true)
         end
         
@@ -1156,6 +1200,8 @@ function love.keypressed(key, scancode, isrepeat)
             local nextShape = (currentTetromino.shape + 1) % #(tetrominos[currentTetromino.id].shapes)
             if checkTetromino(currentTetromino.r, currentTetromino.c, nextShape) == true then
                 currentTetromino.shape = nextShape
+                love.audio.stop(sndMenuChange)
+                love.audio.play(sndMenuChange)
             end
         end
     end
@@ -1169,6 +1215,7 @@ function love.keypressed(key, scancode, isrepeat)
                 ship.y = base.y - base.radius - ship.radius - 4
                 ship.vx = 0
                 ship.vy = 0
+                ship.thrust = false
                 changeScene(SCENE_ASTEROIDS, 1, 30)
             end
             
@@ -1209,9 +1256,13 @@ function love.mousemoved(x, y, dx, dy, istouch)
             e:checkHoover(x, y)
         end
         for i, e in ipairs(menu_elements) do
-            if e.isHoover then 
-                e:setFocus(true)
-                menu_focus = i
+            if e.isHoover then
+                if e.hasFocus == false then
+                    e:setFocus(true)
+                    menu_focus = i
+                    love.audio.stop(sndMenuChange)
+                    love.audio.play(sndMenuChange)
+                end
             else 
                 e:setFocus(false) 
             end
