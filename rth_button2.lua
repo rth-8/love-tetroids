@@ -11,9 +11,10 @@ function RthButton2:new(x, y, w, h, text, handler)
         fn = handler,
         isClicked = false,
         isHoover = false,
+        hasFocus = false,
         color = { 1, 1, 1 },
         hooverColor = { 1, 1, 1 },
-        hasFocus = false,
+        focusColor = { 1, 1, 1 },
         imgUp = nil,
         imgDown = nil,
         quads = {},
@@ -59,6 +60,12 @@ function RthButton2:setHooverColor(r, g, b)
     self.hooverColor[1] = r
     self.hooverColor[2] = g
     self.hooverColor[3] = b
+end
+
+function RthButton2:setFocusColor(r, g, b)
+    self.focusColor[1] = r
+    self.focusColor[2] = g
+    self.focusColor[3] = b
 end
 
 function RthButton2:setImageUp(img, margin)
@@ -120,6 +127,7 @@ function RthButton2:draw()
             love.graphics.setColor(0, 0, 0)
         else
             if self.hasFocus == true then
+                love.graphics.setColor(self.focusColor[1], self.focusColor[2], self.focusColor[3])
                 love.graphics.rectangle("line", self.x + 2, self.y + 2, scaledW - 4, scaledH - 4)
             end
             love.graphics.rectangle("line", self.x, self.y, scaledW, scaledH)
@@ -163,6 +171,12 @@ end
 
 function RthButton2:reset()
     self.isClicked = false
+end
+
+function RthButton2:doAction()
+    if self.fn ~= nil then
+        self.fn()
+    end
 end
 
 return RthButton2

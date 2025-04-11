@@ -74,9 +74,14 @@ function love.load()
     table.insert(menu_elements, Button:new(love.graphics.getWidth()/2 - 200, 250, 400, 50, "NEW GAME", menuNewGame))
     table.insert(menu_elements, Button:new(love.graphics.getWidth()/2 - 200, 350, 400, 50, "SETTINGS", nil))
     table.insert(menu_elements, Button:new(love.graphics.getWidth()/2 - 200, 450, 400, 50, "QUIT", love.event.quit))
+    menu_elements[1]:setFocusColor(1, 1, 0)
+    menu_elements[2]:setFocusColor(1, 1, 0)
+    menu_elements[3]:setFocusColor(1, 1, 0)
     menu_elements[1]:setFont(fontMenuNormal)
     menu_elements[2]:setFont(fontMenuNormal)
     menu_elements[3]:setFont(fontMenuNormal)
+    menu_focus = 1
+    menu_elements[menu_focus]:setFocus(true)
     
     logo = {
         {0,0},{1,0},{2,0}, {4,0},{5,0},{6,0}, {8,0},{9,0},{10,0}, {12,0},{13,0},        {16,0},{17,0},{18,0}, {20,0},{21,0},{22,0}, {24,0},{25,0},        {28,0},{29,0},{30,0},
@@ -139,8 +144,12 @@ function love.load()
     
     table.insert(base_elements, Button:new(25*TILE_W, 3*TILE_H, 100, 30, "$ 100", repairHull))
     table.insert(base_elements, Button:new(25*TILE_W, 5*TILE_H, 100, 30, "$ 100", tankFuel))
+    base_elements[1]:setFocusColor(1, 1, 0)
+    base_elements[2]:setFocusColor(1, 1, 0)
     base_elements[1]:setFont(fontMenuSmall)
     base_elements[2]:setFont(fontMenuSmall)
+    base_focus = 1
+    base_elements[menu_focus]:setFocus(true)
     
     linesToClear = {}
     removingLines = 0
@@ -1035,6 +1044,9 @@ function love.draw()
         for _, e in ipairs(menu_elements) do
             e:draw()
         end
+        love.graphics.setColor(1,1,1)
+        love.graphics.draw(shipImg, menu_elements[menu_focus].x - 10, menu_elements[menu_focus].y + 6, math.pi*0.5)
+        love.graphics.draw(shipImg, menu_elements[menu_focus].x + menu_elements[menu_focus].w + 10, menu_elements[menu_focus].y + 6, math.pi*0.5, 1, -1)
     elseif current_scene == SCENE_ASTEROIDS then
         love.graphics.setColor(1,1,1)
         love.graphics.draw(bgImg, 0, 0)
@@ -1112,6 +1124,24 @@ function love.keypressed(key, scancode, isrepeat)
         if key == "escape" then
             love.event.quit()
         end
+        
+        if key == "up" then
+            print("MENU: up")
+            menu_elements[menu_focus]:setFocus(false)
+            if menu_focus > 1 then menu_focus = menu_focus - 1 end
+            menu_elements[menu_focus]:setFocus(true)
+        end
+        
+        if key == "down" then
+            print("MENU: down")
+            menu_elements[menu_focus]:setFocus(false)
+            if menu_focus < #menu_elements then menu_focus = menu_focus + 1 end
+            menu_elements[menu_focus]:setFocus(true)
+        end
+        
+        if key == "return" then
+            menu_elements[menu_focus]:doAction()
+        end
     end
 
     if current_scene == SCENE_ASTEROIDS then
@@ -1141,6 +1171,22 @@ function love.keypressed(key, scancode, isrepeat)
                 ship.vy = 0
                 changeScene(SCENE_ASTEROIDS, 1, 30)
             end
+            
+            if key == "up" then
+                base_elements[base_focus]:setFocus(false)
+                if base_focus > 1 then base_focus = base_focus - 1 end
+                base_elements[base_focus]:setFocus(true)
+            end
+            
+            if key == "down" then
+                base_elements[base_focus]:setFocus(false)
+                if base_focus < #base_elements then base_focus = base_focus + 1 end
+                base_elements[base_focus]:setFocus(true)
+            end
+            
+            if key == "return" then
+                base_elements[base_focus]:doAction()
+            end
         end
     end
 end
@@ -1161,6 +1207,14 @@ function love.mousemoved(x, y, dx, dy, istouch)
     if current_scene == SCENE_MENU then
         for _, e in ipairs(menu_elements) do
             e:checkHoover(x, y)
+        end
+        for i, e in ipairs(menu_elements) do
+            if e.isHoover then 
+                e:setFocus(true)
+                menu_focus = i
+            else 
+                e:setFocus(false) 
+            end
         end
     elseif current_scene == SCENE_BASE then
         for _, e in ipairs(base_elements) do
